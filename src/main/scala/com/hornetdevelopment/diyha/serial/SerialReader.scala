@@ -1,6 +1,7 @@
 package com.hornetdevelopment.diyha.serial
 
 import com.hornetdevelopment.diyha.config.Config
+import com.typesafe.scalalogging.LazyLogging
 import jssc.{SerialPort, SerialPortEvent, SerialPortEventListener}
 import org.json4s._
 import org.json4s.native.JsonMethods._
@@ -10,7 +11,7 @@ import scala.util.Try
 /**
   * Created by steve on 5/13/16.
   */
-class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends SerialPortEventListener with Config {
+class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends SerialPortEventListener with Config with LazyLogging {
 
   val readBuffer = new StringBuilder()
   val retryCount = getConfigInt("comPort.jsonReadRetryCount", 4)
@@ -35,15 +36,15 @@ class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends Ser
             case None => {
               retries += 1
               if (retries > retryCount) {
-                println("Retry count exceeded, flushing buffer")
+                logger.error(s"Retry count exceeded, flushing buffer. Buffer contents: ${readBuffer.toString}")
                 retries = 0
                 readBuffer.clear
               } else {
-                println(s"Unable to parse JSON: ${readBuffer.toString}, retrying...")
+                logger.error(s"Unable to parse JSON: ${readBuffer.toString}, retrying...")
               }
             }
             case _ => {
-              println(s"Unknown data received: ${readBuffer.toString}")
+              logger.error(s"Unknown data received: ${readBuffer.toString}")
               readBuffer.clear
             }
           }

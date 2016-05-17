@@ -7,6 +7,7 @@ import com.datastax.driver.core.BoundStatement
 import com.hornetdevelopment.diyha.cassandra.CassandraClient
 import com.hornetdevelopment.diyha.config.Config
 import com.hornetdevelopment.diyha.serial.{SerialPortConfig, SerialPortHelper}
+import com.typesafe.scalalogging.LazyLogging
 import org.json4s.native.JsonMethods._
 import org.json4s.{DefaultFormats, JValue}
 
@@ -14,17 +15,18 @@ import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
 
-object DiyhaApp extends App with Config with CassandraClient {
+object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
 
   override def main(args: Array[String]) = {
+
+    logger.info("Started DiyhaApp...")
 
     def jsonCallback(value: JValue) = {
       implicit val formats = DefaultFormats
 
       val dayFormat = new SimpleDateFormat("MM-dd-yyyy") // 05-04-2016
-      val timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss") //2016-05-11 07:01:00
 
-      println(Try {
+      logger.debug(Try {
         "Received JSON: " + compact(render(value))
       }.getOrElse {
         "Unable to render the JSON's JValue..."
@@ -39,9 +41,9 @@ object DiyhaApp extends App with Config with CassandraClient {
         dayFormat.format(now),
         now,
         (value \ "airTemp").extract[Double],
-        (value \ "waterTemp").extract[Double],
         (value \ "humidity").extract[Double],
-        (value \ "heatIndex").extract[Double])
+        (value \ "heatIndex").extract[Double],
+        (value \ "waterTemp").extract[Double])
 
       val insertStmt: BoundStatement = new BoundStatement(session.prepare(
         "insert into diyhatest.station_data_by_day (station_id, date, log_time, temp, humidity, heat_index, water_temp) " +
@@ -64,24 +66,18 @@ object DiyhaApp extends App with Config with CassandraClient {
 
       val spHelper = new SerialPortHelper(spConfig, jsonCallback)
 
-      var start = System.currentTimeMillis()
-      val delay = 1000 * 60 * 5
-
       while (true) {
-        if (System.currentTimeMillis() - start > delay) {
-          Thread.sleep(50)
-          start = System.currentTimeMillis()
-        }
+        Thread.sleep(250)
       }
     }
 
     f.onComplete {
-      case Success(value) => println("Successfully shut down serial port thread")
-      case Failure(e) => println("Error while reading from serial port")
+      case Success(value) => logger.debug("Successfully shut down serial port thread")
+      case Failure(e) => logger.debug("Error while reading from serial port")
     }
 
     while (true) {
-      Thread.sleep(50)
+      Thread.sleep(500)
     }
 
     System.exit(0)
