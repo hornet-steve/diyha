@@ -20,29 +20,32 @@ class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends Ser
     serialPortEvent match {
       case e if e.isRXCHAR && e.getEventValue > 0 => {
         readBuffer.append(serialPort.readString(e.getEventValue))
-        val json: Option[JValue] = Try {
-          Some(parse(readBuffer.toString()))
-        }.getOrElse(None)
-
         // todo - implement a much more elegant and fault tolerant protocol :P
-        json match {
-          case Some(value) => {
-            callback(value)
-            readBuffer.clear
-          }
-          case None => {
-            retries += 1
-            if (retries > retryCount) {
-              println("Retry count exceeded, flushing buffer")
-              retries = 0
+        if (readBuffer.endsWith("\r\n")) {
+
+          val json: Option[JValue] = Try {
+            Some(parse(readBuffer.toString()))
+          }.getOrElse(None)
+
+          json match {
+            case Some(value) => {
+              callback(value)
               readBuffer.clear
-            } else {
-              println(s"Unable to parse JSON: ${readBuffer.toString}, retrying...")
             }
-          }
-          case _ => {
-            println(s"Unknown data received: ${readBuffer.toString}")
-            readBuffer.clear
+            case None => {
+              retries += 1
+              if (retries > retryCount) {
+                println("Retry count exceeded, flushing buffer")
+                retries = 0
+                readBuffer.clear
+              } else {
+                println(s"Unable to parse JSON: ${readBuffer.toString}, retrying...")
+              }
+            }
+            case _ => {
+              println(s"Unknown data received: ${readBuffer.toString}")
+              readBuffer.clear
+            }
           }
         }
       }

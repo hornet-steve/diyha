@@ -1,40 +1,54 @@
 package com.hornetdevelopment.diyha
 
-import java.util.{Calendar, Date}
+import java.text.SimpleDateFormat
+import java.util.Date
 
 import com.datastax.driver.core.BoundStatement
 import com.hornetdevelopment.diyha.cassandra.CassandraClient
 import com.hornetdevelopment.diyha.config.Config
 import com.hornetdevelopment.diyha.serial.{SerialPortConfig, SerialPortHelper}
-import org.json4s.JValue
+import org.json4s.native.JsonMethods._
+import org.json4s.{DefaultFormats, JValue}
 
-import scala.collection.JavaConversions._
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
-import scala.util.{Failure, Success}
+import scala.util.{Failure, Success, Try}
 
 object DiyhaApp extends App with Config with CassandraClient {
 
   override def main(args: Array[String]) = {
 
     def jsonCallback(value: JValue) = {
+      implicit val formats = DefaultFormats
+
+      val dayFormat = new SimpleDateFormat("MM-dd-yyyy") // 05-04-2016
+      val timestampFormat = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss") //2016-05-11 07:01:00
+
+      println(Try {
+        "Received JSON: " + compact(render(value))
+      }.getOrElse {
+        "Unable to render the JSON's JValue..."
+      })
+
       val session = getSession()
-//      val stmt: BoundStatement = new BoundStatement(session.prepare(s"select * from diyhatest.station_data_by_day where station_id = ? AND date = ?"))
-//
-//      val rs = session.execute(stmt.bind("TestSensor", "2016-05-11"))
-//
-//      for (row <- rs) {
-//        println(s"Before: ${row.toString}")
-//      }
-//
-//      val data = SensorData("TestSensor", "2016-05-11", 54.34, 33.33, 44.4, 35.13)
-//
-//      val insertStmt: BoundStatement = new BoundStatement(session.prepare(
-//        "insert into diyhatest.station_data_by_day (station_id, date, log_time, temp, humidity, heat_index, water_temp) " +
-//          "values (?, ?, ?, ?, ?, ?, ?)")).bind(data.station_id, data.date, new Date(), data.temp, data.humidity, data.heat_index, data.water_temp)
-//
-//
-//      session.execute(insertStmt)
+
+      val now = new Date()
+
+      val data = SensorData(
+        (value \ "nodeId").extract[String],
+        dayFormat.format(now),
+        now,
+        (value \ "airTemp").extract[Double],
+        (value \ "waterTemp").extract[Double],
+        (value \ "humidity").extract[Double],
+        (value \ "heatIndex").extract[Double])
+
+      val insertStmt: BoundStatement = new BoundStatement(session.prepare(
+        "insert into diyhatest.station_data_by_day (station_id, date, log_time, temp, humidity, heat_index, water_temp) " +
+          "values (?, ?, ?, ?, ?, ?, ?)")).bind(data.station_id, data.date, data.timestamp, data.temp, data.humidity, data.heat_index, data.water_temp)
+
+      session.execute(insertStmt)
+
       session.close()
     }
 
@@ -55,7 +69,7 @@ object DiyhaApp extends App with Config with CassandraClient {
 
       while (true) {
         if (System.currentTimeMillis() - start > delay) {
-          //spHelper.sp.writeString(Calendar.getInstance().getTime + "\r\n")
+          Thread.sleep(50)
           start = System.currentTimeMillis()
         }
       }
@@ -75,4 +89,5 @@ object DiyhaApp extends App with Config with CassandraClient {
 
 }
 
-case class SensorData(station_id: String, date: String, temp: java.lang.Double, humidity: java.lang.Double, heat_index: java.lang.Double, water_temp: java.lang.Double)
+case class SensorData(station_id: String, date: String, timestamp: Date, temp: java.lang.Double,
+                      humidity: java.lang.Double, heat_index: java.lang.Double, water_temp: java.lang.Double)
