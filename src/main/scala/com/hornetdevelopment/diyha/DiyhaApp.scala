@@ -51,7 +51,7 @@ object DiyhaApp extends App with Config with CassandraClient {
       val spHelper = new SerialPortHelper(spConfig, jsonCallback)
 
       var start = System.currentTimeMillis()
-      val delay = 10 * 1000
+      val delay = 1000 * 60 * 5
 
       while (true) {
         if (System.currentTimeMillis() - start > delay) {

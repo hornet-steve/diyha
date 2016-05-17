@@ -64,4 +64,6 @@ crashlytics.properties
 crashlytics-build.properties
 fabric.properties
 
+application.conf
+
 .DS_Store

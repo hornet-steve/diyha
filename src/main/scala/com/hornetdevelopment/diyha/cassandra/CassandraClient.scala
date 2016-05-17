@@ -7,7 +7,7 @@ import com.hornetdevelopment.diyha.config.Config
   * Created by steve on 5/11/16.
   */
 trait CassandraClient extends Config {
-  private val host = getConfigString("cassandra.host", "52.39.202.246")
+  private val host = getConfigString("cassandra.host", "localhost")
   private val port = getConfigInt("cassandra.port", 9042)
   private val cUsername = getConfigString("cassandra.user", "diyhatest")
   private val cPw = getConfigString("cassandra.pw", "password")
