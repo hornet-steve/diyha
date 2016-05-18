@@ -8,6 +8,8 @@ scalaVersion := "2.11.2"
 
 crossScalaVersions := Seq("2.10.4", "2.11.2")
 
+assemblyJarName in assembly := "diyha_station.jar"
+
 libraryDependencies ++= Seq(
   "com.typesafe" % "config" % "1.3.0" withSources(),
   "com.datastax.cassandra" % "cassandra-driver-core" % "3.0.1" withSources(),
