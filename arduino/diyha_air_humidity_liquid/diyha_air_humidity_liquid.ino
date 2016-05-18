@@ -10,7 +10,7 @@
 #define DHTPIN 12
 #define DHTTYPE DHT11
 
-#define NODE_ID "LakeSensor"
+#define NODE_ID "DeckSensor"
 #define READ_DELAY_MS 250
 #define SLEEP_MINS 10
 #define XBEE_SWITCH 2
@@ -24,7 +24,7 @@ OneWire ds(WATERPIN);
 float humidity = 0.0;
 float temp = 0.0;
 float heatIndex = 0.0;
-float waterTemp = 0.0;
+float waterTemp = -9999.99;
 
 void setup() {
   pinMode(XBEE_SWITCH, OUTPUT);
@@ -40,14 +40,14 @@ void setup() {
   Serial.flush();
   
   readDHT();
-  readWaterTemp();
+  //readWaterTemp();
   delay(500);
 }
 
 void loop() {
   delay(250);
   readDHT();
-  readWaterTemp();
+  //readWaterTemp();
   printJson();
   // sleep is for 10 seconds each, so this is
   // 10 minutes

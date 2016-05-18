@@ -1,5 +1,6 @@
 package com.hornetdevelopment.diyha
 
+import java.net.InetAddress
 import java.text.SimpleDateFormat
 import java.util.Date
 
@@ -20,6 +21,11 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
   override def main(args: Array[String]) = {
 
     logger.info("Started DiyhaApp...")
+    val dataInsertStmt: BoundStatement = new BoundStatement(getSession().prepare(
+      "insert into diyhatest.station_data_by_day (station_id, date, log_time, temp, humidity, heat_index, water_temp) " +
+        "values (?, ?, ?, ?, ?, ?, ?)"))
+    val ipInsertStmt: BoundStatement = new BoundStatement(getSession().prepare(
+      "insert into diyhatest.station_coordinator_ip (ip_address, changed_on) values (?, ?)"))
 
     def jsonCallback(value: JValue) = {
       implicit val formats = DefaultFormats
@@ -32,24 +38,34 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
         "Unable to render the JSON's JValue..."
       })
 
-      val session = getSession()
-
       val now = new Date()
 
-      val data = SensorData(
-        (value \ "nodeId").extract[String],
-        dayFormat.format(now),
-        now,
-        (value \ "airTemp").extract[Double],
-        (value \ "humidity").extract[Double],
-        (value \ "heatIndex").extract[Double],
-        (value \ "waterTemp").extract[Double])
+      val data = Try {
+        SensorData(
+          (value \ "nodeId").extract[String],
+          dayFormat.format(now),
+          now,
+          (value \ "airTemp").extract[Double],
+          (value \ "humidity").extract[Double],
+          (value \ "heatIndex").extract[Double],
+          (value \ "waterTemp").extract[Double])
+      }.getOrElse {
+        logger.error(s"Unable to extract SensorData values from json: ${value}")
+        null
+      }
 
-      val insertStmt: BoundStatement = new BoundStatement(session.prepare(
-        "insert into diyhatest.station_data_by_day (station_id, date, log_time, temp, humidity, heat_index, water_temp) " +
-          "values (?, ?, ?, ?, ?, ?, ?)")).bind(data.station_id, data.date, data.timestamp, data.temp, data.humidity, data.heat_index, data.water_temp)
+      val session = getSession()
 
-      session.execute(insertStmt)
+      if (data != null) {
+        dataInsertStmt.bind(data.station_id, data.date, data.timestamp, data.temp, data.humidity, data.heat_index, data.water_temp)
+        session.execute(dataInsertStmt)
+      }
+
+      // log the ip
+      Try {
+        ipInsertStmt.bind(InetAddress.getLocalHost.getHostAddress, now)
+        session.execute(ipInsertStmt)
+      }
 
       session.close()
     }

@@ -4,7 +4,7 @@
     <appender name="consoleAppender" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
             <charset>UTF-8</charset>
-            <Pattern>%d %-4relative [%thread] %-5level %logger{35} - %msg%n</Pattern>
+            <Pattern>%d{MM-dd-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{5} - %msg%n</Pattern>
         </encoder>
     </appender>
 
@@ -13,7 +13,7 @@
         <file>diyha_station.log</file>
         <encoder class="ch.qos.logback.classic.encoder.PatternLayoutEncoder">
             <Pattern>
-                %d{yyyy-MM-dd HH:mm:ss} - %msg%n
+                %d{MM-dd-yyyy HH:mm:ss.SSS} [%thread] %-5level %logger{5} - %msg%n
             </Pattern>
         </encoder>
 
