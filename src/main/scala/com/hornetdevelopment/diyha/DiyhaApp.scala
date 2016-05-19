@@ -88,6 +88,12 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
     logger.info("Started DiyhaApp...")
     logLocalIp()
 
+    var running = true
+
+    Runtime.getRuntime.addShutdownHook(new Thread {
+      override def run(): Unit = running = false
+    })
+
     val f = Future {
       val spConfig = SerialPortConfig(
         getConfigString("comPort.portName", "/dev/ttyAMA0"),
@@ -99,21 +105,17 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
 
       val spHelper = new SerialPortHelper(spConfig, jsonCallback)
 
-      while (true) {
+      while (running) {
         Thread.sleep(250)
       }
+
+      "Shutdown Complete"
     }
 
     f.onComplete {
-      case Success(value) => logger.debug("Successfully shut down serial port thread")
-      case Failure(e) => logger.debug("Error while reading from serial port")
+      case Success(value) => logger.debug(s"Successfully shut down serial port thread. Message: ${value}")
+      case Failure(e) => logger.error("Error while reading from serial port", e)
     }
-
-    while (true) {
-      Thread.sleep(500)
-    }
-
-    System.exit(0)
   }
 
 
