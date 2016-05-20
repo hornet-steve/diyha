@@ -1,0 +1,21 @@
+#!/bin/bash
+# diyha app init script
+#
+# description:diyha service
+
+case $1 in
+    start)
+	cd /home/pi/diyha/
+        /home/pi/diyha/start.sh
+    ;;
+    stop)
+	cd /home/pi/diyha/
+        /home/pi/diyha/stop.sh
+    ;;
+    restart)
+	cd /home/pi/diyha/
+        /home/pi/diyha/stop.sh
+        /home/pi/diyha/start.sh
+    ;;
+esac
+exit 0

@@ -65,19 +65,23 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
         (value \ "nodeId").extract[String],
         dayFormat.format(now),
         now,
-        (value \ "airTemp").extract[Double],
-        (value \ "humidity").extract[Double],
-        (value \ "heatIndex").extract[Double],
-        (value \ "waterTemp").extract[Double])
+        (value \ "airTemp").extractOpt[java.lang.Double],
+        (value \ "humidity").extractOpt[java.lang.Double],
+        (value \ "heatIndex").extractOpt[java.lang.Double],
+        (value \ "waterTemp").extractOpt[java.lang.Double]
+      )
     }.getOrElse {
       logger.error(s"Unable to extract SensorData values from json: ${value}")
       null
     }
 
+    // TODO error handling when no internet/c* connection, plus a queue to store data in memory
+    // until the connection is restored
     val session = getSession()
 
     if (data != null) {
-      dataInsertStmt.bind(data.station_id, data.date, data.timestamp, data.temp, data.humidity, data.heat_index, data.water_temp)
+      dataInsertStmt.bind(data.station_id, data.date, data.timestamp, data.temp.getOrElse(null), data.humidity.getOrElse(null),
+        data.heat_index.getOrElse(null), data.water_temp.getOrElse(null))
       session.execute(dataInsertStmt)
     }
 
@@ -121,5 +125,6 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
 
 }
 
-case class SensorData(station_id: String, date: String, timestamp: Date, temp: java.lang.Double,
-                      humidity: java.lang.Double, heat_index: java.lang.Double, water_temp: java.lang.Double)
+// why java.lang.Double? Because the datastax java driver had some issues mapping from Scala and the converter wasn't handling it...
+case class SensorData(station_id: String, date: String, timestamp: Date, temp: Option[java.lang.Double],
+                      humidity: Option[java.lang.Double], heat_index: Option[java.lang.Double], water_temp: Option[java.lang.Double])

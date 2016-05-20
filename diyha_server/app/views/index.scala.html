@@ -1,7 +1,70 @@
-@(message: String)
+@main("Prior Lake Temperature") {
+<div class="row">
+    <div class="one-half column" style="margin-top: 5%">
+        <h3>Current Temperature</h3>
+        <div><h4>50 F</h4></div>
+        <div id="current_div" style="width: 400px; height: 120px;"></div>
+    </div>
+    <div class="one-half column" style="margin-top: 5%">
+        <h4>Current Lake Temperature</h4>
 
-@main("Welcome to Play") {
+        <div id="current_lake_div" style="width: 400px; height: 120px;"></div>
+        current lake temp
+    </div>
+</div>
+<div class="row">
+    <div class="one-half column" style="margin-top: 5%">
+        <h4>Humidity</h4>
 
-    @play20.welcome(message)
+        <div id="humidity_div" style="width: 400px; height: 120px;"></div>
+        humidity
+    </div>
+    <div class="one-half column" style="margin-top: 5%">
+        <h4>Heat Index</h4>
+
+        <div id="heat_index_div" style="width: 400px; height: 120px;"></div>
+        heat index
+    </div>
+</div>
+<script type="text/javascript">
+      google.charts.load('current', {'packages':['gauge']});
+      google.charts.setOnLoadCallback(drawChart);
+      function drawChart() {
+
+        var data = google.visualization.arrayToDataTable([
+          ['Label', 'Value'],
+          ['Current', 0]
+        ]);
+
+        var options = {
+          width: 100, height: 100,
+          redFrom: 90, redTo: 100,
+          yellowFrom:75, yellowTo: 90,
+          minorTicks: 5,
+          max: 130, min: -30,
+          animation: {
+            easing: 'out',
+            duration: 1000}
+        };
+
+        var chart = new google.visualization.Gauge(document.getElementById('current_div'));
+
+        chart.draw(data, options);
+
+        setInterval(function() {
+          data.setValue(0, 1, 40 + Math.round(60 * Math.random()));
+          chart.draw(data, options);
+        }, 1000);
+        setInterval(function() {
+          data.setValue(1, 1, 40 + Math.round(60 * Math.random()));
+          chart.draw(data, options);
+        }, 2000);
+        setInterval(function() {
+          data.setValue(2, 1, 60 + Math.round(20 * Math.random()));
+          chart.draw(data, options);
+        }, 3000);
+      }
+
+</script>
 
 }
