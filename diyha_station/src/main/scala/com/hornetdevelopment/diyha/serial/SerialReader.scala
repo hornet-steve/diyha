@@ -11,7 +11,7 @@ import scala.util.Try
 /**
   * Created by steve on 5/13/16.
   */
-class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends SerialPortEventListener with Config with LazyLogging {
+class SerialReader(serialPort: SerialPort, callback: JValue => Any) extends SerialPortEventListener with Config with LazyLogging {
 
   val readBuffer = new StringBuilder()
   val retryCount = getConfigInt("comPort.jsonReadRetryCount", 4)
@@ -30,8 +30,8 @@ class SerialReader(serialPort: SerialPort, callback: JValue => Unit) extends Ser
 
           json match {
             case Some(value) => {
-              callback(value)
               readBuffer.clear
+              callback(value)
             }
             case None => {
               retries += 1

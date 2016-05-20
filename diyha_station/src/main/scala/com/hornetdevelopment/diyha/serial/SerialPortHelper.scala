@@ -6,7 +6,7 @@ import org.json4s.JsonAST.JValue
 /**
   * Created by steve on 5/13/16.
   */
-class SerialPortHelper(config: SerialPortConfig, callback: JValue => Unit) {
+class SerialPortHelper(config: SerialPortConfig, callback: JValue => Any) {
   val sp = new SerialPort(config.portName)
   sp.openPort()
   sp.setParams(config.baudRate, config.dataBits, config.stopBits, config.parity)

@@ -13,6 +13,7 @@ import org.json4s.native.JsonMethods._
 import org.json4s.{DefaultFormats, JValue}
 
 import scala.collection.convert.Wrappers.JEnumerationWrapper
+import scala.collection.mutable.ListBuffer
 import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.Future
 import scala.util.{Failure, Success, Try}
@@ -24,6 +25,8 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
       "values (?, ?, ?, ?, ?, ?, ?)"))
   lazy val ipInsertStmt: BoundStatement = new BoundStatement(getSession().prepare(
     "insert into diyhatest.station_coordinator_ip (ip_address, changed_on) values (?, ?)"))
+
+  val sensorDataCache = new ListBuffer[SensorData]
 
   def logLocalIp() = {
     Try {
@@ -58,9 +61,21 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
       "Unable to render the JSON's JValue..."
     })
 
+    def persistSensorData(data: SensorData): Try[Unit] = {
+      Try {
+        val session = getSession()
+        if (data != null) {
+          dataInsertStmt.bind(data.station_id, data.date, data.timestamp, data.temp.getOrElse(null), data.humidity.getOrElse(null),
+            data.heat_index.getOrElse(null), data.water_temp.getOrElse(null))
+          session.execute(dataInsertStmt)
+        }
+        session.close()
+      }
+    }
+
     val now = new Date()
 
-    val data = Try {
+    Try[SensorData] {
       SensorData(
         (value \ "nodeId").extract[String],
         dayFormat.format(now),
@@ -70,22 +85,38 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
         (value \ "heatIndex").extractOpt[java.lang.Double],
         (value \ "waterTemp").extractOpt[java.lang.Double]
       )
-    }.getOrElse {
-      logger.error(s"Unable to extract SensorData values from json: ${value}")
-      null
+    } match {
+      case Failure(e) => {
+        logger.error(s"Unable to extract SensorData values from json: ${value}", e)
+      }
+      case Success(sd) => {
+        persistSensorData(sd) match {
+          case Success(nothing) => {
+            logger.debug("Persisted data to Cassandra")
+            if (sensorDataCache.length > 0) {
+              logger.debug(s"Found ${sensorDataCache.length} CACHED SensorData elements - attempting to write to Cassandra")
+              sensorDataCache.foreach { sensorData =>
+                persistSensorData(sensorData) match {
+                  case Success(nothing) => {
+                    sensorDataCache -= sensorData
+                    logger.debug(s"Persisted CACHED SensorData to Cassandra, removing from cache")
+                  }
+                  case Failure(e) => {
+                    logger.error("Unable to persist CACHED SensorData to Cassandra, leaving in Cache", e)
+                  }
+                }
+              }
+              logger.debug(s"After persist attempts, there are ${sensorDataCache.length} SensorData elements left in the cache")
+            }
+          }
+          case Failure(e) => {
+            // add to queue for the next try when connectivity is restored
+            logger.error(s"Unable to write data ${compact(render(value))} to Cassandra. Storing locally.", e)
+            sensorDataCache += sd
+          }
+        }
+      }
     }
-
-    // TODO error handling when no internet/c* connection, plus a queue to store data in memory
-    // until the connection is restored
-    val session = getSession()
-
-    if (data != null) {
-      dataInsertStmt.bind(data.station_id, data.date, data.timestamp, data.temp.getOrElse(null), data.humidity.getOrElse(null),
-        data.heat_index.getOrElse(null), data.water_temp.getOrElse(null))
-      session.execute(dataInsertStmt)
-    }
-
-    session.close()
   }
 
   override def main(args: Array[String]) = {
@@ -121,8 +152,6 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
       case Failure(e) => logger.error("Error while reading from serial port", e)
     }
   }
-
-
 }
 
 // why java.lang.Double? Because the datastax java driver had some issues mapping from Scala and the converter wasn't handling it...
