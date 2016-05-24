@@ -7,7 +7,7 @@ lazy val root = (project in file(".")).enablePlugins(PlayScala)
 scalaVersion := "2.11.6"
 
 libraryDependencies ++= Seq(
-  jdbc,
+  "com.datastax.cassandra" % "cassandra-driver-core" % "3.0.1",
   cache,
   ws,
   specs2 % Test

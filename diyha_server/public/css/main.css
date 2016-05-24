@@ -1,0 +1,48 @@
+.container-centered {
+    text-align: center;
+    margin-left:auto;
+    margin-right:auto;
+}
+
+.chart-centered {
+    display: inline-block;
+    margin: 0 auto;
+}
+
+.popped {
+    -webkit-border-radius: 20px;
+    -moz-border-radius: 20px;
+    border-radius: 20px;
+    border:3px solid #000000;
+    background-color:#E0E0E0;
+    -webkit-box-shadow: #000000 20px 20px 20px;
+    -moz-box-shadow: #000000 20px 20px 20px;
+    box-shadow: #000000 20px 20px 20px;
+    margin-bottom: 20px;
+}
+
+body {
+    background:
+    /* top, transparent red, faked with gradient */
+    linear-gradient(
+      rgba(100, 100, 120, 0.30),
+      rgba(100, 100, 120, 0.30)
+    ),
+    /* bottom, image */
+    url(/assets/images/pl.jpg);
+    background-position: center;
+    image-orientation: from-image;
+}
+
+.site-title {
+    font-weight: bold;
+    font-size: 60px;
+}
+
+.white {
+    color: white;
+}
+
+.temp {
+    font-weight: bold;
+}

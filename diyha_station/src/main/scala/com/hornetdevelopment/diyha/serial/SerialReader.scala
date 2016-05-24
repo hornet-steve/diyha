@@ -30,8 +30,8 @@ class SerialReader(serialPort: SerialPort, callback: JValue => Any) extends Seri
 
           json match {
             case Some(value) => {
-              readBuffer.clear
               callback(value)
+              readBuffer.clear
             }
             case None => {
               retries += 1

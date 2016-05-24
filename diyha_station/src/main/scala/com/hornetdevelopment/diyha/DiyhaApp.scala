@@ -2,7 +2,7 @@ package com.hornetdevelopment.diyha
 
 import java.net.NetworkInterface
 import java.text.SimpleDateFormat
-import java.util.Date
+import java.util.{TimeZone, Date}
 
 import com.datastax.driver.core.BoundStatement
 import com.hornetdevelopment.diyha.cassandra.CassandraClient
@@ -26,7 +26,11 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
   lazy val ipInsertStmt: BoundStatement = new BoundStatement(getSession().prepare(
     "insert into diyhatest.station_coordinator_ip (ip_address, changed_on) values (?, ?)"))
 
-  val sensorDataCache = new ListBuffer[SensorData]
+  lazy val dayFormat = {
+    val fmt = new SimpleDateFormat("MM-dd-yyyy") // 05-04-2016
+    fmt.setTimeZone(TimeZone.getTimeZone("CST6CDT"))
+    fmt
+  }
 
   def logLocalIp() = {
     Try {
@@ -52,8 +56,6 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
   def jsonCallback(value: JValue) = {
     logLocalIp()
     implicit val formats = DefaultFormats
-
-    val dayFormat = new SimpleDateFormat("MM-dd-yyyy") // 05-04-2016
 
     logger.debug(Try {
       "Received JSON: " + compact(render(value))
@@ -93,26 +95,10 @@ object DiyhaApp extends App with Config with CassandraClient with LazyLogging {
         persistSensorData(sd) match {
           case Success(nothing) => {
             logger.debug("Persisted data to Cassandra")
-            if (sensorDataCache.length > 0) {
-              logger.debug(s"Found ${sensorDataCache.length} CACHED SensorData elements - attempting to write to Cassandra")
-              sensorDataCache.foreach { sensorData =>
-                persistSensorData(sensorData) match {
-                  case Success(nothing) => {
-                    sensorDataCache -= sensorData
-                    logger.debug(s"Persisted CACHED SensorData to Cassandra, removing from cache")
-                  }
-                  case Failure(e) => {
-                    logger.error("Unable to persist CACHED SensorData to Cassandra, leaving in Cache", e)
-                  }
-                }
-              }
-              logger.debug(s"After persist attempts, there are ${sensorDataCache.length} SensorData elements left in the cache")
-            }
           }
           case Failure(e) => {
             // add to queue for the next try when connectivity is restored
             logger.error(s"Unable to write data ${compact(render(value))} to Cassandra. Storing locally.", e)
-            sensorDataCache += sd
           }
         }
       }

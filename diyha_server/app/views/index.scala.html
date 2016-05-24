@@ -1,70 +1,112 @@
-@main("Prior Lake Temperature") {
-<div class="row">
-    <div class="one-half column" style="margin-top: 5%">
-        <h3>Current Temperature</h3>
-        <div><h4>50 F</h4></div>
-        <div id="current_div" style="width: 400px; height: 120px;"></div>
-    </div>
-    <div class="one-half column" style="margin-top: 5%">
-        <h4>Current Lake Temperature</h4>
+@(stationId: String)
 
-        <div id="current_lake_div" style="width: 400px; height: 120px;"></div>
-        current lake temp
+@main("Prior Lake Temperature") {
+<div class="row"><h1 class="site-title white">Prior Lake Temperatures</h1></div>
+<div class="row"><h3 class="white">Last Updated: <span class="last_updated"></span></h3></div>
+<div class="row">
+    <div class="one-half column popped" >
+        <h3>Current Temperature</h3>
+
+        <div><h3 class="temp"><span class="temp_val">0</span>&deg; F</h3></div>
+        <div id="current_div" class="chart-centered"></div>
+    </div>
+    <div class="one-half column popped" >
+        <h3>Current Lake Temperature</h3>
+
+        <div><h3 class="temp"><span class="lake_val">0</span>&deg; F</h3></div>
+        <div id="current_lake_div" class="chart-centered"></div>
     </div>
 </div>
 <div class="row">
-    <div class="one-half column" style="margin-top: 5%">
-        <h4>Humidity</h4>
+    <div class="one-half column popped" >
+        <h3>Humidity</h3>
 
-        <div id="humidity_div" style="width: 400px; height: 120px;"></div>
-        humidity
+        <div><h3 class="temp"><span class="humid_val">0</span>%</h3></div>
+        <div id="humidity_div" class="chart-centered"></div>
     </div>
-    <div class="one-half column" style="margin-top: 5%">
-        <h4>Heat Index</h4>
+    <div class="one-half column popped" >
+        <h3>Heat Index</h3>
 
-        <div id="heat_index_div" style="width: 400px; height: 120px;"></div>
-        heat index
+        <div><h3 class="temp"><span class="heat_index_val">0</span>&deg; F</h3></div>
+        <div id="heat_index_div" class="chart-centered"></div>
     </div>
 </div>
 <script type="text/javascript">
       google.charts.load('current', {'packages':['gauge']});
-      google.charts.setOnLoadCallback(drawChart);
-      function drawChart() {
+      google.charts.setOnLoadCallback(getData);
+      var allData = null;
+      var tempData = null;
+      var humidityData = null;
+      var waterTempData = null;
+      var heatIndexData = null;
 
-        var data = google.visualization.arrayToDataTable([
-          ['Label', 'Value'],
-          ['Current', 0]
-        ]);
+      var tempChart = null;
+      var waterTempChart = null;
+      var humidityChart = null;
+      var heatIndexChart = null;
 
-        var options = {
-          width: 100, height: 100,
-          redFrom: 90, redTo: 100,
-          yellowFrom:75, yellowTo: 90,
-          minorTicks: 5,
-          max: 130, min: -30,
+      var options = {
+          width: 200, height: 250,
+          redFrom: 90, redTo: 110,
+          yellowFrom: 60, yellowTo: 90,
+          greenFrom: 40, greenTo: 60,
+          majorTicks: ['0','10','20','30','40','50','60','70','80','90','100','110'],
+          minorTicks: 4,
+          max: 110, min: 0,
           animation: {
             easing: 'out',
-            duration: 1000}
+            duration: 2000}
         };
 
-        var chart = new google.visualization.Gauge(document.getElementById('current_div'));
+        var humidOptions = {
+          width: 200, height: 250,
+          redFrom: 90, redTo: 100,
+          yellowFrom:75, yellowTo: 90,
+          majorTicks: ['0', '25', '50', '75', '100'],
+          minorTicks: 5,
+          max: 100, min: 0,
+          animation: {
+            easing: 'out',
+            duration: 2000}
+        };
 
-        chart.draw(data, options);
+      function getData() {
+        $.get("/tempData/@stationId", function(data, status){
+            allData = data;
 
-        setInterval(function() {
-          data.setValue(0, 1, 40 + Math.round(60 * Math.random()));
-          chart.draw(data, options);
-        }, 1000);
-        setInterval(function() {
-          data.setValue(1, 1, 40 + Math.round(60 * Math.random()));
-          chart.draw(data, options);
-        }, 2000);
-        setInterval(function() {
-          data.setValue(2, 1, 60 + Math.round(20 * Math.random()));
-          chart.draw(data, options);
-        }, 3000);
+            $(".temp_val").text(allData.airTemp[1][1]);
+            $(".lake_val").text(allData.waterTemp[1][1]);
+            $(".humid_val").text(allData.humidity[1][1]);
+            $(".heat_index_val").text(allData.heatIndex[1][1]);
+            $(".last_updated").text(allData.lastUpdated);
+
+            if (!tempChart || !waterTempChart || !humidityChart || !heatIndexChart){
+               tempChart = new google.visualization.Gauge(document.getElementById('current_div'));
+               waterTempChart = new google.visualization.Gauge(document.getElementById('current_lake_div'));
+               humidityChart = new google.visualization.Gauge(document.getElementById('humidity_div'));
+               heatIndexChart = new google.visualization.Gauge(document.getElementById('heat_index_div'));
+            }
+
+            tempData = google.visualization.arrayToDataTable(allData.airTemp);
+            humidityData = google.visualization.arrayToDataTable(allData.humidity);
+            waterTempData = google.visualization.arrayToDataTable(allData.waterTemp);
+            heatIndexData = google.visualization.arrayToDataTable(allData.heatIndex);
+
+            drawChart();
+        });
+      }
+
+      setInterval(function() {
+          getData();
+      }, 60000 * 3);
+
+       function drawChart() {
+        tempChart.draw(tempData, options);
+        waterTempChart.draw(waterTempData, options);
+        humidityChart.draw(humidityData, humidOptions);
+        heatIndexChart.draw(heatIndexData, options);
       }
 
 </script>
-
 }
+
