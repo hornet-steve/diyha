@@ -1,4 +1,4 @@
-name := "play-scala"
+name := "diyha_server"
 
 version := "1.0-SNAPSHOT"
 
@@ -8,6 +8,7 @@ scalaVersion := "2.11.6"
 
 libraryDependencies ++= Seq(
   "com.datastax.cassandra" % "cassandra-driver-core" % "3.0.1",
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
   cache,
   ws,
   specs2 % Test

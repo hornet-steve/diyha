@@ -5,17 +5,23 @@ import java.util.{Date, TimeZone}
 
 import cassandra.CassandraHelper
 import com.datastax.driver.core.BoundStatement
+import com.typesafe.scalalogging.LazyLogging
 import play.api.libs.json._
 import play.api.mvc._
 
 import scala.util.{Failure, Success, Try}
 
-class Application extends Controller with CassandraHelper {
+class Application extends Controller with CassandraHelper with LazyLogging {
 
   val getTodaysDataStmt = new BoundStatement(getSession().prepare(s"select * from station_data_by_day where station_id = ? and date = ? order by log_time desc limit 1"))
 
-  val dayFormat = new SimpleDateFormat("MM-dd-yyyy")
-  val lastUpdatedFormat = {
+  lazy val dayFormat = {
+    val fmt = new SimpleDateFormat("MM-dd-yyyy") // 05-04-2016
+    fmt.setTimeZone(TimeZone.getTimeZone("CST6CDT"))
+    fmt
+  }
+
+  lazy val lastUpdatedFormat = {
     val fmt = new SimpleDateFormat("MMM dd, yyyy hh:mm:ss a zzz")
     fmt.setTimeZone(TimeZone.getTimeZone("CST6CDT"))
     fmt
@@ -40,9 +46,11 @@ class Application extends Controller with CassandraHelper {
     val today = new Date()
 
     val json: JsValue = Try {
+      logger.debug(s"Executed cassandra query for stationId: ${stationId}")
       getSession().execute(getTodaysDataStmt.bind(stationId, dayFormat.format(today)))
     } match {
       case Success(rs) => {
+        logger.debug(s"Successful query for stationId: ${stationId}")
         val currentDataRow = rs.one()
 
         if (currentDataRow != null) {
@@ -58,7 +66,7 @@ class Application extends Controller with CassandraHelper {
         }
       }
       case Failure(e) => {
-        e.printStackTrace()
+        logger.error(s"Error querying Cassandra for stationId: ${stationId}, sending default JSON.", e)
         getEmptyJson
       }
     }
